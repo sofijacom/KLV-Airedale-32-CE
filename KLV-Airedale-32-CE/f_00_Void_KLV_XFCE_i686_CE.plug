@@ -1,0 +1,513 @@
+# f_00_Void_KLV_XFCE_i686_CE1.0.plug
+# version="1.0"; revision="-CE-1.0"
+# Kennel Linux Void outfitted with a xfce4 desktop and no kernel **uses puppy linux kernel**
+# Creation date 2025.06.11; Revision date: 
+# Copyright Kennel Linux team; Licence MIT
+# mv firstrib_rootfs 07firstrib_rootfs
+
+# build this via terminal commands:build_firstrib_rootfs.sh
+# ./build_firstrib_rootfs.sh void default i686 f_00_Void_KLV_XFCE_i686_CE.plug
+# Architecture i686 will probably successfully build too as an alternative to amd64
+
+# login is user=root passwd=root
+
+# All the parameters/commandlines can be appropriately changed:
+# Simply comment in or comment out till you have what you desire
+# or add new packages to the xbps-install lists.
+# You can add as many valid commandlines as you want in here.
+# eudev setxkbmap xorg-fonts xauth xinit
+# base system
+xbps-install -y base-minimal ncurses-base
+xbps-install -y mc xterm xauth eudev dbus polkitd
+xbps-install -y shadow wpa_supplicant dhcpcd file bash
+xbps-install -y ntfs-3g zstd zip 7zip unzip p7zip rsync kmod xwininfo
+xbps-install -y xorg-minimal xorg-input-drivers setxkbmap orca
+xbps-install -y espeakup void-live-audio brltty
+xbps-install -y dialog cryptsetup lvm2 mdadm void-docs-browse xtools-minimal xmirror chrony tmux
+
+# set up passwd system
+pwconv
+grpconv
+printf "root\nroot\n" | passwd >/dev/null 2>&1 # Quietly set default root passwd to "root"
+# set root to use /bin/bash
+usermod --shell /bin/bash root
+
+# Set locale to en_US.UTF-8 
+sed -i 's/#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/default/libc-locales
+sed -i 's/#C.UTF-8 UTF-8/C.UTF-8 UTF-8/' /etc/default/libc-locales
+echo "LANG=en_US.UTF-8" >> /etc/environment
+echo "LC_ALL=en_US.UTF-8" >> /etc/environment
+xbps-reconfigure -f glibc-locales
+
+# Set Bash as shell
+xbps-alternatives --set bash
+
+## --------------------------------------------------------------------------
+## XLibre server, xfce4 Desktop
+
+xbps-install -y xfce4 xfce4-panel xfce4-plugins mugshot
+xbps-install -y gvfs yad tzutils dialog gettext cpupower
+xbps-install -y gvfs-smb gvfs-mtp gvfs-cdda gvfs-afc udisks2 xdotool
+xbps-install -y gftp rox geany mtpaint xfce4-screenshooter
+xbps-install -y octoxbps fox guvcview putty smplayer mpv
+xbps-install -y e2fsprogs yelp gparted xhost pfetch
+xbps-install -y dosfstools mtools syslinux cherrytree galculator
+xbps-install -y squashfs-tools wget leafpad xmessage
+xbps-install -y micro htop btop gpick gcolor2 gufw xtools
+
+# Browser selection
+xbps-install -y firefox
+
+# Fix Firefox Fonts 
+#
+ln -s /usr/share/fontconfig/conf.avail/70-no-bitmaps.conf /etc/fonts/conf.d/
+xbps-reconfigure -f fontconfig
+
+# System Audio/Multimedia /wireplumber
+echo pipewire wireplumber alsa-pipewire pavucontrol pamixer qpwgraph ffmpeg \
+| xargs -n1 xbps-install -Sy
+
+
+# disable pulseaudio autostart
+mv /etc/xdg/autostart/pulseaudio.desktop /etc/xdg/autostart/pulseaudio.desktop.bak
+
+# symlink pipewire.desktop launcher in /etc/xdg/autostart/
+ln -s /usr/share/applications/pipewire.desktop /etc/xdg/autostart/pipewire.desktop
+
+# symlink pipewire-pulse.desktop launcher in /etc/xdg/autostart/
+ln -s /usr/share/applications/pipewire-pulse.desktop /etc/xdg/autostart/pipewire-pulse.desktop
+
+mkdir -p /etc/pipewire/pipewire.conf.d
+ln -s /usr/share/examples/wireplumber/10-wireplumber.conf /etc/pipewire/pipewire.conf.d/
+mkdir -p /etc/pipewire/pipewire.conf.d
+ln -s /usr/share/examples/pipewire/20-pipewire-pulse.conf /etc/pipewire/pipewire.conf.d/
+
+mkdir -p /etc/alsa/conf.d
+ln -s /usr/share/alsa/alsa.conf.d/50-pipewire.conf /etc/alsa/conf.d
+ln -s /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf /etc/alsa/conf.d
+
+# for root desktop
+mkdir -p /root/.config/pipewire/pipewire.conf.d
+ln -s /usr/share/examples/wireplumber/10-wireplumber.conf /root/.config/pipewire/pipewire.conf.d/
+ln -s /usr/share/examples/pipewire/20-pipewire-pulse.conf /root/.config/pipewire/pipewire.conf.d/
+
+# for spot desktop
+mkdir -p /home/spot/.config/pipewire/pipewire.conf.d
+ln -s /usr/share/examples/wireplumber/10-wireplumber.conf /home/spot/.config/pipewire/pipewire.conf.d/
+ln -s /usr/share/examples/pipewire/20-pipewire-pulse.conf /home/spot/.config/pipewire/pipewire.conf.d/
+
+# Install Network Manager
+#
+xbps-install -y NetworkManager network-manager-applet
+ln -s /etc/sv/NetworkManager /etc/runit/runsvdir/default/NetworkManager
+
+# Cups print service
+echo cups cups-filters cups-pdf samba-cups \
+| xargs -n1 xbps-install -y
+ln -s /etc/sv/cupsd /etc/runit/runsvdir/default/cupsd
+
+## autostart firewall Gufw
+ln -s /etc/sv/ufw /var/service
+
+# Bluetooth
+# bluez bluez-alsa blueman
+echo bluez blueman bluez-obex bluez-deprecated libspa-bluetooth \
+| xargs -n1 xbps-install -y
+ln -s /etc/sv/bluetoothd /var/service
+ln -s /etc/sv/bluetoothd /etc/runit/runsvdir/default/bluetoothd
+
+usermod -G bluetooth -a root
+
+# Add ~/Startup directory
+#
+mkdir -p /root/Startup
+cat <<'EOF' >> /usr/local/bin/start-up
+#!/bin/bash
+sleep 5
+user_home=$(eval echo ~${SUDO_USER})
+ls $user_home/Startup/* | while read J
+do
+   "$J" &
+done
+EOF
+
+chmod +x /usr/local/bin/start-up
+
+# Start poorercputemp
+mkdir -p /home/spot/.config/autostart
+touch /home/spot/.config/autostart/poorercputemp.desktop
+cat <<'EOF' >> /home/spot/.config/autostart/poorercputemp.desktop
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+NoDisplay=true
+Name=poorercputemp
+Exec=sudo poorercputemp
+EOF
+
+# Setup autologin on tty1
+#
+# cp -a /etc/X11/xinit/xinitrc /root/.xinitrc
+cp -R /etc/sv/agetty-tty1 /etc/sv/agetty-autologin-tty1
+sed -i 's/GETTY_ARGS.*/GETTY_ARGS="--autologin root --noclear"/' /etc/sv/agetty-autologin-tty1/conf  # editing for autologin root
+touch /etc/sv/agetty-tty1/down
+
+# Arrange to startx in user's .bash_profile (per Arch Wiki)
+# Remove this section if not wanting boot straight into X
+touch ~/.bash_profile
+cat <<'AUTOLOGIN' > /etc/profile.d/autologin.sh
+# autologin on tty1
+if [ -z "$DISPLAY" ] && [ "$(fgconsole)" -eq 1 ]; then
+ exec startx  # remove the exec if you want back to tty1 on exit X
+
+fi
+AUTOLOGIN
+
+# Get and install autologin fix
+#
+# cd /etc/sv
+# wget https://rockedge.org/kernels/data/XBPS_packages/agetty-autologin-tty1.tar.gz
+# tar xvfz agetty-autologin-tty1.tar.gz
+
+# Use agetty-autologin-tty1 instead of agetty-tty1 
+rm -f /etc/runit/runsvdir/default/agetty-tty1
+ln -s /etc/sv/agetty-autologin-tty1 /etc/runit/runsvdir/default/agetty-autologin-tty1
+
+# enable dbus service
+# ln -s /etc/sv/dbus /var/service
+ln -s /etc/sv/dbus /etc/runit/runsvdir/default/dbus
+ln -s /etc/sv/ntpd /etc/runit/runsvdir/default/ntpd  # /etc/sv/nptd is symlink to chronyd
+
+# elogind
+xbps-install -y elogind
+ln -s /etc/sv/elogind /var/service/
+
+# Auto-editing .xinitrc to use xfce4 instead of twm
+# Because I'm using exec here the script will end there so no xterms started
+#
+# sed -i 's/twm &/exec xfce4-session/' ~/.xinitrc
+
+## .xinitrc
+cat <<'EOF' >> /root/.xinitrc
+#!/bin/sh
+
+userresources="$HOME/.Xresources"
+usermodmap="$HOME/.Xmodmap"
+sysresources="$xinitdir/.Xresources"
+sysmodmap="$xinitdir/.Xmodmap"
+
+# merge in defaults and keymaps
+
+if [ -f "$sysresources" ]; then
+    if [ -x /usr/bin/cpp ] ; then
+        "$xrdb" -merge "$sysresources"
+    else
+        "$xrdb" -nocpp -merge "$sysresources"
+    fi
+fi
+
+if [ -f "$sysmodmap" ]; then
+    "$xmodmap" "$sysmodmap"
+fi
+
+if [ -f "$userresources" ]; then
+    if [ -x /usr/bin/cpp ] ; then
+        "$xrdb" -merge "$userresources"
+    else
+        "$xrdb" -nocpp -merge "$userresources"
+    fi
+fi
+
+if [ -f "$usermodmap" ]; then
+    "$xmodmap" "$usermodmap"
+fi
+
+# start some nice programs
+
+if [ -d "$xinitdir"/xinitrc.d ] ; then
+	for f in "$xinitdir/xinitrc.d"/?*.sh ; do
+		[ -x "$f" ] && . "$f"
+	done
+	unset f
+fi
+
+EOF
+
+sed -i '51,$d' /root/.xinitrc
+echo "pipewire &" >>/root/.xinitrc
+echo "pipewire-pulse &" >>/root/.xinitrc
+echo "/usr/local/bin/start-up &" >>/root/.xinitrc 
+echo "exec xfce4-session" >>/root/.xinitrc
+#echo "# exec xfce4-session" >>/root/.xinitrc  # removed exec to allow dropping out of Xorg to console
+
+# .xinitrc to use in xfce
+#
+touch /home/spot/.xinitrc
+cat <<'EOF' >> /home/spot/.xinitrc
+#!/bin/sh
+
+userresources="$HOME/.Xresources"
+usermodmap="$HOME/.Xmodmap"
+sysresources="$xinitdir/.Xresources"
+sysmodmap="$xinitdir/.Xmodmap"
+
+# merge in defaults and keymaps
+
+if [ -f "$sysresources" ]; then
+    if [ -x /usr/bin/cpp ] ; then
+        "$xrdb" -merge "$sysresources"
+    else
+        "$xrdb" -nocpp -merge "$sysresources"
+    fi
+fi
+
+if [ -f "$sysmodmap" ]; then
+    "$xmodmap" "$sysmodmap"
+fi
+
+if [ -f "$userresources" ]; then
+    if [ -x /usr/bin/cpp ] ; then
+        "$xrdb" -merge "$userresources"
+    else
+        "$xrdb" -nocpp -merge "$userresources"
+    fi
+fi
+
+if [ -f "$usermodmap" ]; then
+    "$xmodmap" "$usermodmap"
+fi
+
+# start some nice programs
+
+if [ -d "$xinitdir"/xinitrc.d ] ; then
+	for f in "$xinitdir/xinitrc.d"/?*.sh ; do
+		[ -x "$f" ] && . "$f"
+	done
+	unset f
+fi
+
+EOF
+
+sed -i '51,$d' /home/spot/.xinitrc
+echo "pipewire &" >>/home/spot/.xinitrc
+echo "pipewire-pulse &" >>/home/spot/.xinitrc
+echo "/usr/local/bin/start-up &" >>/home/spot/.xinitrc
+echo "exec xfce4-session" >>/home/spot/.xinitrc
+#echo "# exec xfce4-session" >>/home/spot/.xinitrc  # removed exec to allow dropping out of Xorg to console
+
+# ~/.Xresources for larger xterm uxterm fonts
+cat <<'XRESOURCES' > ~/.Xresources
+Xft*antialias: true
+Xft*autohint: true
+XTerm*background: black
+XTerm*foreground: grey
+XTerm*cursorColor: grey
+XTerm.vt100.geometry: 95x25+150
+XTerm.vt100.scrollBar: true
+XTerm.vt100.scrollbar.width: 8
+XTerm*faceName: Monospace Regular 
+XTerm*faceSize: 9
+
+UXft*antialias: true
+UXft*autohint: true
+UXTerm*background: black
+UXTerm*foreground: grey
+UXTerm*cursorColor: grey
+UXTerm.vt100.geometry: 84x25+150
+UXTerm*faceName: Monospace Regular 
+UXTerm*faceSize: 9
+XRESOURCES
+
+# /home/spot/.Xresources for larger xterm uxterm fonts
+touch  /home/spot/.Xresources
+cat <<'XRESOURCES' > /home/spot/.Xresources
+Xft*antialias: true
+Xft*autohint: true
+XTerm*background: black
+XTerm*foreground: grey
+XTerm*cursorColor: grey
+XTerm.vt100.geometry: 95x25+150
+XTerm.vt100.scrollBar: true
+XTerm.vt100.scrollbar.width: 8
+XTerm*faceName: Monospace Regular
+XTerm*faceSize: 9
+
+UXft*antialias: true
+UXft*autohint: true
+UXTerm*background: black
+UXTerm*foreground: grey
+UXTerm*cursorColor: grey
+UXTerm.vt100.geometry: 84x25+150
+UXTerm*faceName: Monospace Regular
+UXTerm*faceSize: 9
+XRESOURCES
+
+# root
+# Change to fancy prompt via .bashrc
+sed -i '51,$d' ~/.bashrc
+echo "pfetch" >> ~/.bashrc
+VAR='PS1="\[\e[0;36m\]┌──\[\e[0m\][ \[\e[0;33m\]\u\[\e[0m\]\[\e[0;32m\]@\[\e[0;36m\]\h\[\e[0m\] ] [ \[\e[0;36m\]\t\[\e[0m\] ]\n\[\e[0;36m\]├── \[\e[0;32m\]\w\[\e[0;36m\]\n\[\e[0;36m\]└>\[\e[0m\]" '
+echo "$VAR" >> ~/.bashrc
+
+# spot
+# Change to fancy prompt via .bashrc
+touch /home/spot/.bashrc
+sed -i '51,$d' /home/spot/.bashrc
+echo "pfetch" >> /home/spot/.bashrc
+VAR='PS1="\[\e[0;36m\]┌──\[\e[0m\][ \[\e[0;33m\]\u\[\e[0m\]\[\e[0;32m\]@\[\e[0;36m\]\h\[\e[0m\] ] [ \[\e[0;36m\]\t\[\e[0m\] ]\n\[\e[0;36m\]├── \[\e[0;32m\]\w\[\e[0;36m\]\n\[\e[0;36m\]└>\[\e[0m\]" '
+echo "$VAR" >> /home/spot/.bashrc
+
+## USER CONFIGS: Copy main configs to /etc/skel for all normal users later added
+#
+xbps-install -y sudo
+cp -af /root/. /etc/skel
+mkdir -p /etc/skel/.config /etc/skel/.cache /etc/skel/.local/share
+echo Still some extra to do here re the likes of runit starting pulseaudio
+echo among other user needed config bits and pieces,
+echo so probably a few user-config issues noted as needing fixed here
+
+# Give wheel group nopasswd sudo rights and create weedog as wheel group member
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' | (VISUAL="tee -a" visudo) # wheel group added to sudo no password required
+useradd -m -G wheel -s /bin/bash weedog  # weedog in wheel group so has elevated sudo permissions
+printf "weedog\nweedog\n" | passwd weedog >/dev/null 2>&1 # Quietly set default weedog passwd to "weedog"
+
+# Give wheel group nopasswd sudo rights and create spot as wheel group member
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' | (VISUAL="tee -a" visudo) # wheel group added to sudo no password required
+useradd -m -G wheel -s /bin/bash spot  #spot in wheel group so has elevated sudo permissions
+printf "spot\nspot\n" | passwd spot >/dev/null 2>&1 # Quietly set default spot
+
+# Create /home/spot directories
+#
+mkdir -p /home/spot/Desktop
+mkdir -p /home/spot/Documents
+mkdir -p /home/spot/Downloads
+mkdir -p /home/spot/Music
+mkdir -p /home/spot/my-applications
+mkdir -p /home/spot/Pictures
+mkdir -p /home/spot/Public
+mkdir -p /home/spot/Startup
+mkdir -p /home/spot/Templates
+mkdir -p /home/spot/Videos
+
+# Create /root directories
+#
+mkdir -p /root/Desktop
+mkdir -p /root/Documents
+mkdir -p /root/Downloads
+mkdir -p /root/Music
+mkdir -p /root/my-applications
+mkdir -p /root/Pictures
+mkdir -p /root/Public
+mkdir -p /root/Startup
+mkdir -p /root/Templates
+mkdir -p /root/Videos
+
+# Set permissions
+#
+chown -R spot:spot /home/spot
+chown -R weedog:weedog /home/weedog
+
+# add users to groups and change permissions
+#
+usermod -a -G audio weedog
+usermod -a -G audio spot
+usermod -a -G video weedog
+usermod -a -G video spot
+xhost +
+chmod 755 /
+chmod 755 /bin
+chmod 755 /lib
+
+# add sudo -spot to .desktop files
+# cd /usr/share/applications
+# sed -i 's/^Exec=/&sudo -uspot /' octoxbps.desktop
+# sed -i 's/^Exec=/&sudo -uspot /' octoxbps-notifier.desktop
+
+# Copy .desktop files to /root/.local/share/applications and add run-as-spot to the Exec command
+#
+mkdir -p /root/.local/share/applications
+cp /usr/share/applications/octoxbps.desktop  /root/.local/share/applications/octoxbps.desktop
+cp /usr/share/applications/octoxbps-notifier.desktop  /root/.local/share/applications/octoxbps-notifier.desktop
+
+cd /root/.local/share/applications/
+sed -i 's/^Exec=/&run-as-spot /' octoxbps.desktop
+sed -i 's/^Exec=/&run-as-spot /' octoxbps-notifier.desktop
+cp /root/.local/share/applications/octoxbps-notifier.desktop /etc/xdg/autostart/octoxbps-notifier.desktop
+
+cp /usr/share/applications/thunar.desktop /usr/share/applications/thunar-spot.desktop
+sed -i 's/^Exec=/&sudo -uspot /' thunar-spot.desktop
+sed -i 's/^Name=/&spot-/' thunar-spot.desktop
+
+#### Get KLV custom packages ####
+#
+# Create and switch to build directory
+mkdir -p /root/Build
+cd /root/Build
+
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/gparted-shell-1.0_0.noarch.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/xbps-tools-1.0_3.noarch.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/uextract-4.14_0.x86_64.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/SFS-Load-2.0_1.noarch.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/tas-2.0_1.noarch.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/packit-pfind-3.0_1.noarch.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/run-as-users-1.5_1.noarch.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/inst-xbps-1.8_1.noarch.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/save2flash-1.9_0.noarch.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/poorercputemp-0.2_1.x86_64.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/dcontrol-2.0_1.x86_64.xbps
+wget -c https://github.com/sofijacom/xbps_packages/raw/refs/heads/main/Octoxbps-cleaner-cache-1.1.2_1.noarch.xbps
+
+#### Install KLV custom packages ####
+
+# Register and index packages
+cd /root
+xbps-rindex -a Build/*.xbps
+
+# Install gparted-shell
+xbps-install -y --repository=Build/ gparted-shell-1.0_0
+
+# Install xbps-tools 
+xbps-install -y --repository=Build/ xbps-tools-1.0_3
+
+# Install uextract
+xbps-install -y --repository=Build/ uextract-4.14_0
+
+# Install SFS-Load
+xbps-install -y --repository=Build/ SFS-Load-2.0_1
+
+# Install tas
+xbps-install -y --repository=Build/ tas-2.0_1
+
+# Install Packit and pFind
+xbps-install -y --repository=Build/ packit-pfind-3.0_1
+
+# Install run-as-spot and run-as-weedog
+xbps-install -y --repository=Build/ run-as-users-1.5_1
+
+# Install inst-xbps
+xbps-install -y --repository=Build/ inst-xbps-1.8_1
+
+# Install save2flash
+xbps-install -y --repository=Build/ save2flash-1.9_0
+
+#
+xbps-install -y --repository=Build/ poorercputemp-0.2_1
+
+#
+xbps-install -y --repository=Build/ dcontrol-2.0_1
+
+#
+xbps-install -y --repository=Build/ Octoxbps-cleaner-cache-1.1.2_1
+
+# Set execution permissions recursivly for binaries and scripts
+chmod +x -R /usr/local/bin
+
+# Clean Up
+#
+
+rm -r /root/Build
+rm /var/cache/xbps/*
+
+# Set your timezone. Example:
+current_timezone="Etc/UTC"
+ln -sf /usr/share/zoneinfo/${current_timezone} /etc/localtime
