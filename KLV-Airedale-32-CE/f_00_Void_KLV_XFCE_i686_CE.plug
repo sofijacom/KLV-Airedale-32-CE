@@ -19,10 +19,8 @@
 # base system
 xbps-install -y base-minimal ncurses-base
 xbps-install -y mc xterm xauth eudev dbus polkitd
-xbps-install -y shadow wpa_supplicant dhcpcd file bash
+xbps-install -y shadow wpa_supplicant dhcpcd file bash xrandr
 xbps-install -y ntfs-3g zstd zip 7zip unzip p7zip rsync kmod xwininfo
-xbps-install -y xorg-minimal xorg-input-drivers setxkbmap orca
-xbps-install -y espeakup void-live-audio brltty
 
 xbps-install -y base-files libgcc dash coreutils sed tar gawk squashfs-tools xorriso
 xbps-install -y binutils xz device-mapper dhclient dracut-network openresolv 
@@ -55,7 +53,7 @@ xbps-alternatives --set bash
 
 xbps-install -y xfce4 xfce4-panel xfce4-plugins mugshot
 xbps-install -y gvfs yad tzutils dialog gettext cpupower
-xbps-install -y gvfs-smb gvfs-mtp gvfs-cdda gvfs-afc udisks2 xdotool
+xbps-install -y gvfs-smb gvfs-mtp gvfs-cdda gvfs-afc xdotool
 xbps-install -y gftp rox geany mtpaint xfce4-screenshooter
 xbps-install -y octoxbps fox guvcview putty smplayer mpv
 xbps-install -y e2fsprogs yelp gparted xhost pfetch
@@ -239,7 +237,6 @@ echo "pipewire &" >>/root/.xinitrc
 echo "pipewire-pulse &" >>/root/.xinitrc
 echo "/usr/local/bin/start-up &" >>/root/.xinitrc 
 echo "xfce4-session" >>/root/.xinitrc
-#echo "# exec xfce4-session" >>/root/.xinitrc  # removed exec to allow dropping out of Xorg to console
 
 # .xinitrc to use in xfce
 #
@@ -294,7 +291,6 @@ echo "pipewire &" >>/home/spot/.xinitrc
 echo "pipewire-pulse &" >>/home/spot/.xinitrc
 echo "/usr/local/bin/start-up &" >>/home/spot/.xinitrc
 echo "xfce4-session" >>/home/spot/.xinitrc
-#echo "# exec xfce4-session" >>/home/spot/.xinitrc  # removed exec to allow dropping out of Xorg to console
 
 # ~/.Xresources for larger xterm uxterm fonts
 cat <<'XRESOURCES' > ~/.Xresources
@@ -418,11 +414,6 @@ xhost +
 chmod 755 /
 chmod 755 /bin
 chmod 755 /lib
-
-# add sudo -spot to .desktop files
-# cd /usr/share/applications
-# sed -i 's/^Exec=/&sudo -uspot /' octoxbps.desktop
-# sed -i 's/^Exec=/&sudo -uspot /' octoxbps-notifier.desktop
 
 # Copy .desktop files to /root/.local/share/applications and add run-as-spot to the Exec command
 #
