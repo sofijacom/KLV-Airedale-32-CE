@@ -438,5 +438,3 @@ rm /var/cache/xbps/*
 # Set your timezone. Example:
 current_timezone="Etc/UTC"
 ln -sf /usr/share/zoneinfo/${current_timezone} /etc/localtime
-
-clear
