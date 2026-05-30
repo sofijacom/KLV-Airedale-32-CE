@@ -310,7 +310,7 @@ mkdir -p /home/spot/Desktop
 mkdir -p /home/spot/Documents
 mkdir -p /home/spot/Downloads
 mkdir -p /home/spot/Music
-# mkdir -p /home/spot/my-applications
+mkdir -p /home/spot/my-applications
 mkdir -p /home/spot/Pictures
 mkdir -p /home/spot/Public
 mkdir -p /home/spot/Startup
@@ -323,7 +323,7 @@ mkdir -p /root/Desktop
 mkdir -p /root/Documents
 mkdir -p /root/Downloads
 mkdir -p /root/Music
-# mkdir -p /root/my-applications
+mkdir -p /root/my-applications
 mkdir -p /root/Pictures
 mkdir -p /root/Public
 mkdir -p /root/Startup
